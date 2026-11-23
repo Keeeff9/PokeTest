@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}Error {{ code }}{% endblock %}
+
+{% block content %}
+<div class="text-center py-5">
+  <p class="display-3 text-danger mb-0">{{ code }}</p>
+  <h1 class="h4">{{ title }}</h1>
+  <p class="text-muted">{{ message }}</p>
+  <a class="btn btn-danger" href="{{ url_for('pokemon.index') }}">Volver al inicio</a>
+</div>
+{% endblock %}

@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}{{ pokemon.name|capitalize }} - Pokedex{% endblock %}
+
+{% block content %}
+<a class="btn btn-link px-0" href="{{ url_for('pokemon.index') }}">&larr; Volver al listado</a>
+
+<div class="card shadow-sm">
+  <div class="card-body">
+    <div class="row">
+      <div class="col-md-4 text-center">
+        {% if pokemon.sprite %}
+          <img src="{{ pokemon.sprite }}" alt="{{ pokemon.name }}" class="img-fluid" style="image-rendering: pixelated; max-width: 220px;">
+        {% else %}
+          <p class="text-muted">Sin imagen disponible</p>
+        {% endif %}
+      </div>
+
+      <div class="col-md-8">
+        <h1 class="h3">{{ pokemon.name|capitalize }}
+          <small class="text-muted">#{{ "%04d"|format(pokemon.id) }}</small>
+        </h1>
+
+        <p>
+          {% for t in pokemon.types %}
+            <span class="badge bg-secondary">{{ t }}</span>
+          {% endfor %}
+        </p>
+
+        <p class="mb-1"><strong>Altura:</strong> {{ pokemon.height_m }} m</p>
+        <p class="mb-1"><strong>Peso:</strong> {{ pokemon.weight_kg }} kg</p>
+        <p><strong>Habilidades:</strong> {{ pokemon.abilities|join(", ") }}</p>
+
+        <h2 class="h6 mt-3">Estadisticas base</h2>
+       {% for name, value in pokemon.stats.items() %}
+        <div class="mb-2">
+        <div class="d-flex justify-content-between">
+            <small>{{ name }}</small><small>{{ value }}</small>
+        </div>
+        <progress class="stat-bar w-100" value="{{ value }}" max="255">{{ value }}</progress>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
