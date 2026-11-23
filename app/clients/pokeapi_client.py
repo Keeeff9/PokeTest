@@ -1,3 +1,4 @@
+from app.validators import normalize_identifier
 import requests
 
 
@@ -22,12 +23,14 @@ class PokeAPIClient:
     # ---------- API pública ----------
 
     def get_pokemon(self, name_or_id):
-        identifier = str(name_or_id).strip().lower()
-        if not identifier:
-            raise ValueError("El nombre o id del Pokemon no puede estar vacio.")
-
+        identifier = normalize_identifier(name_or_id)
         data = self._get(f"pokemon/{identifier}")
-        return self._parse_pokemon(data)
+        try:
+            return self._parse_pokemon(data)
+        except (KeyError, TypeError) as exc:
+            raise PokeAPIError(
+                "La respuesta de PokeAPI no tiene la estructura esperada."
+            ) from exc
 
     def list_pokemon(self, limit=20, offset=0):
         if not 1 <= limit <= 100:
@@ -36,17 +39,18 @@ class PokeAPIClient:
             raise ValueError("offset no puede ser negativo.")
 
         data = self._get("pokemon", params={"limit": limit, "offset": offset})
-        return {
-            "count": data["count"],
-            "results": [
-                {
-                    "id": self._extract_id(item["url"]),
-                    "name": item["name"],
-                }
-                for item in data["results"]
-            ],
-        }
-
+        try:
+            return {
+                "count": data["count"],
+                "results": [
+                    {"id": self._extract_id(i["url"]), "name": i["name"]}
+                    for i in data["results"]
+                ],
+            }
+        except (KeyError, TypeError, ValueError) as exc:
+            raise PokeAPIError(
+                "La respuesta de PokeAPI no tiene la estructura esperada."
+            ) from exc
     # ---------- Internos ----------
 
     def _get(self, path, params=None):

@@ -8,11 +8,16 @@ bp = Blueprint("pokemon", __name__)
 def _service():
     return current_app.extensions["pokemon_service"]
 
+def _parse_page(raw):
+    if not (raw.isascii() and raw.isdecimal() and len(raw) <= 7):
+        raise ValueError("Parametro page invalido.")
+    return int(raw)
+
 
 @bp.route("/")
 def index():
-    page = request.args.get("page", default=1, type=int)
     try:
+        page = _parse_page(request.args.get("page", "1"))
         data = _service().get_page(page)
     except ValueError:
         abort(400)
