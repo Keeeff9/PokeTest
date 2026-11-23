@@ -1,5 +1,8 @@
+import logging
 from flask import Flask, render_template
-
+from app.extensions import db
+from app.models.pokemon import PokemonCache  
+from app.repositories.pokemon_repository import PokemonRepository
 from app.clients.pokeapi_client import (
     PokeAPIClient,
     PokeAPIError,
@@ -11,15 +14,27 @@ from app.services.pokemon_service import PokemonService
 
 
 def create_app(config_class=Config):
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+    )
+
     app = Flask(__name__)
     app.config.from_object(config_class)
+
+    db.init_app(app)
+    with app.app_context():
+        db.create_all()
 
     client = PokeAPIClient(
         app.config["POKEAPI_BASE_URL"],
         app.config["REQUEST_TIMEOUT"],
     )
     app.extensions["pokemon_service"] = PokemonService(
-        client, per_page=app.config["PER_PAGE"]
+        client,
+        PokemonRepository(),
+        per_page=app.config["PER_PAGE"],
+        cache_ttl_seconds=app.config["CACHE_TTL_SECONDS"],
     )
 
     from app.routes.pokemon import bp as pokemon_bp

@@ -1,4 +1,12 @@
+import logging
 import math
+from datetime import timedelta
+
+from app.clients.pokeapi_client import PokeAPIUnavailableError
+from app.models.pokemon import utc_now
+from app.validators import normalize_identifier
+
+logger = logging.getLogger(__name__)
 
 SPRITE_URL = (
     "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/{id}.png"
@@ -10,9 +18,19 @@ class PageOutOfRangeError(Exception):
 
 
 class PokemonService:
-    def __init__(self, client, per_page=20):
+    def __init__(
+        self,
+        client,
+        repository,
+        per_page=20,
+        cache_ttl_seconds=7 * 24 * 3600,
+        clock=utc_now,
+    ):
         self.client = client
+        self.repository = repository
         self.per_page = per_page
+        self.cache_ttl = timedelta(seconds=cache_ttl_seconds)
+        self.clock = clock
 
     def get_page(self, page):
         if page < 1:
@@ -44,4 +62,24 @@ class PokemonService:
         }
 
     def get_detail(self, name_or_id):
-        return self.client.get_pokemon(name_or_id)
+        identifier = normalize_identifier(name_or_id)
+        cached = self.repository.get(identifier)
+
+        if cached is not None and not self._is_stale(cached):
+            logger.info("cache hit: %s", identifier)
+            return cached.to_dict()
+
+        logger.info("cache miss: %s", identifier)
+        try:
+            data = self.client.get_pokemon(identifier)
+        except PokeAPIUnavailableError:
+            if cached is not None:
+                logger.warning("PokeAPI no disponible; se sirve dato vencido: %s", identifier)
+                return cached.to_dict()
+            raise
+
+        self.repository.save(data)
+        return data
+
+    def _is_stale(self, record):
+        return self.clock() - record.fetched_at > self.cache_ttl
